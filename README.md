@@ -19,6 +19,23 @@ cd ios && pod install
 
 This installs `react-native-iap` automatically as a dependency.
 
+## Authentication
+
+The SDK requires a `customerApiToken` — a customer-scoped token that is safe to use on the client. Your backend is responsible for obtaining this token by calling Mantle's [identify](https://docs.heymantle.com) endpoint with your secret API key:
+
+```
+# Your backend calls identify with your secret API key
+POST https://appapi.heymantle.com/v1/identify
+X-Mantle-App-Api-Key: your-secret-api-key
+
+{ "platform": "...", "platformId": "...", "name": "...", "email": "..." }
+
+# Response includes the customer API token
+{ "apiToken": "cust_abc123..." }
+```
+
+Your backend then passes `apiToken` to the React Native app (e.g. as part of your auth/login response). The app never needs your secret API key.
+
 ## Quick Start
 
 ### 1. Wrap your app with MantleProvider
@@ -27,10 +44,13 @@ This installs `react-native-iap` automatically as a dependency.
 import { MantleProvider } from '@heymantle/react-native';
 
 function App() {
+  // customerApiToken comes from your backend's identify call
+  const { customerApiToken } = useAuth();
+
   return (
     <MantleProvider
       appId="your-mantle-app-id"
-      customerApiToken={token} // from Mantle's identify endpoint
+      customerApiToken={customerApiToken}
     >
       <YourApp />
     </MantleProvider>
@@ -173,7 +193,7 @@ function FeatureGatedScreen() {
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
 | `appId` | `string` | ✅ | — | Your Mantle App ID |
-| `customerApiToken` | `string` | ✅ | — | Customer API token from Mantle's identify endpoint |
+| `customerApiToken` | `string` | ✅ | — | Customer API token obtained from your backend (see [Authentication](#authentication)) |
 | `apiUrl` | `string` | — | `https://appapi.heymantle.com/v1` | Mantle API URL |
 | `simulationMode` | `boolean` | — | `false` | Enable simulation mode for testing without store credentials |
 | `waitForCustomer` | `boolean` | — | `false` | Block rendering until customer is loaded |
