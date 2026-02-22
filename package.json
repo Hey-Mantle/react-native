@@ -1,6 +1,6 @@
 {
   "name": "@heymantle/react-native",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React Native SDK for Mantle billing with Apple IAP support",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
