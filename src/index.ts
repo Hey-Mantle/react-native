@@ -21,6 +21,8 @@ export type {
   PurchaseResult,
   RestoreResult,
   SimulateResult,
+  SendUsageEventParams,
+  UsageEventResult,
   MantleProviderProps,
   MantleReactNativeContext,
   // Re-exported from @heymantle/client
@@ -30,4 +32,5 @@ export type {
   MantleError,
   Plan,
   Subscription,
+  UsageEvent,
 } from "./types";

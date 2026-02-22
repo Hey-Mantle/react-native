@@ -27,6 +27,8 @@ import type {
   PurchaseResult,
   RestoreResult,
   SimulateResult,
+  SendUsageEventParams,
+  UsageEventResult,
 } from "./types";
 import { purchaseSimulated, simulateEventService, restoreSimulated } from "./services/simulation";
 import {
@@ -398,6 +400,51 @@ export const MantleProvider: React.FC<MantleProviderProps> = ({
   );
 
   /**
+   * Send a usage event to track metered usage
+   */
+  const sendUsageEvent = useCallback(
+    async (params: SendUsageEventParams): Promise<UsageEventResult> => {
+      try {
+        const result = await client.sendUsageEvent(params);
+        if (result && "error" in result) {
+          return { success: false, error: result.error };
+        }
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    },
+    [client]
+  );
+
+  /**
+   * Send multiple usage events
+   */
+  const sendUsageEvents = useCallback(
+    async (events: SendUsageEventParams[]): Promise<UsageEventResult> => {
+      if (!customer?.id) {
+        return { success: false, error: "No customer loaded" };
+      }
+      try {
+        const result = await client.sendUsageEvents({
+          events: events.map((e) => ({
+            ...e,
+            customerId: customer.id,
+            properties: e.properties ?? {},
+          })),
+        });
+        if (result && "error" in result) {
+          return { success: false, error: result.error };
+        }
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    },
+    [client, customer]
+  );
+
+  /**
    * Open the platform's subscription management page.
    * Currently opens the Apple subscription management URL.
    * Will support Google Play when added.
@@ -614,6 +661,8 @@ export const MantleProvider: React.FC<MantleProviderProps> = ({
         restore,
         cancelSubscription: cancelSub,
         simulateEvent,
+        sendUsageEvent,
+        sendUsageEvents,
         openSubscriptionManagement,
         refetch,
         isFeatureEnabled,

@@ -8,12 +8,16 @@ import { useMantle } from "../hooks/useMantle";
 const mockGetCustomer = vi.fn();
 const mockCancelSubscription = vi.fn().mockResolvedValue({ id: "sub-1" });
 const mockSubscribe = vi.fn().mockResolvedValue({ id: "sub-free" });
+const mockSendUsageEvent = vi.fn().mockResolvedValue({ success: true });
+const mockSendUsageEvents = vi.fn().mockResolvedValue({ success: true });
 
 vi.mock("@heymantle/client", () => ({
   MantleClient: vi.fn().mockImplementation(() => ({
     getCustomer: mockGetCustomer,
     cancelSubscription: mockCancelSubscription,
     subscribe: mockSubscribe,
+    sendUsageEvent: mockSendUsageEvent,
+    sendUsageEvents: mockSendUsageEvents,
   })),
 }));
 
@@ -918,6 +922,216 @@ describe("MantleProvider", () => {
 
     expect(purchaseResult.success).toBe(false);
     expect(purchaseResult.error).toBe("Subscription failed");
+  });
+});
+
+describe("sendUsageEvent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sends a usage event successfully", async () => {
+    mockGetCustomer.mockResolvedValue({
+      id: "cust-1",
+      test: false,
+      plans: [],
+      features: {},
+      usage: {},
+      usageCredits: [],
+      reviews: [],
+      billingStatus: "active",
+    });
+
+    mockSendUsageEvent.mockResolvedValue({ success: true });
+
+    const { result } = renderHook(() => useMantle(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let eventResult: any;
+    await act(async () => {
+      eventResult = await result.current.sendUsageEvent({
+        eventName: "api_call",
+        properties: { endpoint: "/users" },
+      });
+    });
+
+    expect(eventResult.success).toBe(true);
+    expect(mockSendUsageEvent).toHaveBeenCalledWith({
+      eventName: "api_call",
+      properties: { endpoint: "/users" },
+    });
+  });
+
+  it("returns error when sendUsageEvent fails", async () => {
+    mockGetCustomer.mockResolvedValue({
+      id: "cust-1",
+      test: false,
+      plans: [],
+      features: {},
+      usage: {},
+      usageCredits: [],
+      reviews: [],
+      billingStatus: "active",
+    });
+
+    mockSendUsageEvent.mockResolvedValue({ error: "Rate limit exceeded" });
+
+    const { result } = renderHook(() => useMantle(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let eventResult: any;
+    await act(async () => {
+      eventResult = await result.current.sendUsageEvent({
+        eventName: "api_call",
+      });
+    });
+
+    expect(eventResult.success).toBe(false);
+    expect(eventResult.error).toBe("Rate limit exceeded");
+  });
+
+  it("handles exception in sendUsageEvent", async () => {
+    mockGetCustomer.mockResolvedValue({
+      id: "cust-1",
+      test: false,
+      plans: [],
+      features: {},
+      usage: {},
+      usageCredits: [],
+      reviews: [],
+      billingStatus: "active",
+    });
+
+    mockSendUsageEvent.mockRejectedValue(new Error("Network error"));
+
+    const { result } = renderHook(() => useMantle(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let eventResult: any;
+    await act(async () => {
+      eventResult = await result.current.sendUsageEvent({
+        eventName: "api_call",
+      });
+    });
+
+    expect(eventResult.success).toBe(false);
+    expect(eventResult.error).toBe("Network error");
+  });
+});
+
+describe("sendUsageEvents", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sends multiple usage events with customerId", async () => {
+    mockGetCustomer.mockResolvedValue({
+      id: "cust-1",
+      test: false,
+      plans: [],
+      features: {},
+      usage: {},
+      usageCredits: [],
+      reviews: [],
+      billingStatus: "active",
+    });
+
+    mockSendUsageEvents.mockResolvedValue({ success: true });
+
+    const { result } = renderHook(() => useMantle(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let eventResult: any;
+    await act(async () => {
+      eventResult = await result.current.sendUsageEvents([
+        { eventName: "api_call", properties: { endpoint: "/users" } },
+        { eventName: "api_call", properties: { endpoint: "/posts" } },
+      ]);
+    });
+
+    expect(eventResult.success).toBe(true);
+    expect(mockSendUsageEvents).toHaveBeenCalledWith({
+      events: [
+        { eventName: "api_call", properties: { endpoint: "/users" }, customerId: "cust-1" },
+        { eventName: "api_call", properties: { endpoint: "/posts" }, customerId: "cust-1" },
+      ],
+    });
+  });
+
+  it("returns error when no customer loaded", async () => {
+    mockGetCustomer.mockResolvedValue({ error: "Unauthorized" });
+
+    const { result } = renderHook(() => useMantle(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let eventResult: any;
+    await act(async () => {
+      eventResult = await result.current.sendUsageEvents([
+        { eventName: "api_call" },
+      ]);
+    });
+
+    expect(eventResult.success).toBe(false);
+    expect(eventResult.error).toBe("No customer loaded");
+    expect(mockSendUsageEvents).not.toHaveBeenCalled();
+  });
+
+  it("returns error when sendUsageEvents fails", async () => {
+    mockGetCustomer.mockResolvedValue({
+      id: "cust-1",
+      test: false,
+      plans: [],
+      features: {},
+      usage: {},
+      usageCredits: [],
+      reviews: [],
+      billingStatus: "active",
+    });
+
+    mockSendUsageEvents.mockResolvedValue({ error: "Batch too large" });
+
+    const { result } = renderHook(() => useMantle(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let eventResult: any;
+    await act(async () => {
+      eventResult = await result.current.sendUsageEvents([
+        { eventName: "api_call" },
+      ]);
+    });
+
+    expect(eventResult.success).toBe(false);
+    expect(eventResult.error).toBe("Batch too large");
   });
 });
 

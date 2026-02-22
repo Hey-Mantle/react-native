@@ -11,6 +11,7 @@ import type {
   MantleError,
   Plan,
   Subscription,
+  UsageEvent,
 } from "@heymantle/client";
 
 // Re-export types consumers need
@@ -21,6 +22,7 @@ export type {
   MantleError,
   Plan,
   Subscription,
+  UsageEvent,
 } from "@heymantle/client";
 
 /**
@@ -91,6 +93,24 @@ export interface SimulateResult {
   error?: string;
 }
 
+/** Params for sending a usage event */
+export interface SendUsageEventParams {
+  /** Unique event ID (auto-generated if not provided) */
+  eventId?: string;
+  /** Event name matching a usage metric */
+  eventName: string;
+  /** Event timestamp (defaults to now) */
+  timestamp?: Date;
+  /** Additional event properties */
+  properties?: Record<string, any>;
+}
+
+/** Result of a usage event operation */
+export interface UsageEventResult {
+  success: boolean;
+  error?: string;
+}
+
 /** API configuration for making Mantle requests */
 export interface ApiConfig {
   apiUrl: string;
@@ -146,6 +166,10 @@ export interface MantleReactNativeContext {
   cancelSubscription: (reason?: string) => Promise<Subscription | MantleError>;
   /** Simulate a lifecycle event (simulation mode only) */
   simulateEvent: (event: SimulateEvent) => Promise<SimulateResult>;
+  /** Send a usage event */
+  sendUsageEvent: (params: SendUsageEventParams) => Promise<UsageEventResult>;
+  /** Send multiple usage events */
+  sendUsageEvents: (events: SendUsageEventParams[]) => Promise<UsageEventResult>;
   /** Open the platform's subscription management page */
   openSubscriptionManagement: () => Promise<void>;
   /** Refetch customer data */
